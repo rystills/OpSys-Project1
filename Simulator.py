@@ -159,6 +159,17 @@ class Simulator():
         print("time {0}ms: Process {1} completed I/O; added to ready queue {2}".format(self.t + p.timeRemaining + 1, p.pid, self.queueString()))
         
     """
+    get how much context switch time is remaining to switch the current running process out, if any
+    @returns the amount of time until the current context switch out finishes, or 0 if no context switch out is currently happening
+    """
+    def switchOutRemainingTime(self):
+        for e in self.events.queue:
+            if (e.eType == EventType.SwitchOut):
+                #we found a switch out event: return the difference between the current time and the event time
+                return e.time - self.t
+        return 0
+
+    """
     check the ready queue for a process to switch in if no process is currently running
     """    
     def updateReadyQueue(self):
@@ -167,7 +178,7 @@ class Simulator():
             self.currRunning.state = State.Running
             self.currRunning.timeRemaining = self.currRunning.cpuBurstTime
             self.currRunning.numBursts-=1
-            self.addEvent(EventType.SwitchIn, self.t + self.t_cs//2, self.currRunning)
+            self.addEvent(EventType.SwitchIn, self.t + self.t_cs//2 + self.switchOutRemainingTime(), self.currRunning)
             
     """
     when a process is switched in, we display that information and add a new event for its completion time
@@ -219,8 +230,9 @@ class Simulator():
             #process the current event
             self.processEvent(currEvent)
                 
-            #check the ready queue, pulling in a new process if nothing is running after event processing has finished   
-            self.updateReadyQueue()
+            #check the ready queue once all same-time events have finished, pulling in a new process if nothing is running now
+            if (len(self.events.queue) == 0 or self.events.queue[0].time != self.t):
+                self.updateReadyQueue()
             
         self.showStopMessage()
         
