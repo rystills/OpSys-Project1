@@ -35,7 +35,11 @@ def main():
         
     #extract our processes from the input file, then begin the simulation
     processes = readInput(sys.argv[1])
-    sim = Simulator(Algorithm.FCFS, processes)
+    Simulator(Algorithm.FCFS, processes)
+    print()
+    Simulator(Algorithm.SRT, processes)
+    print()
+    Simulator(Algorithm.RR, processes)
     
 if __name__ == "__main__":
     main()

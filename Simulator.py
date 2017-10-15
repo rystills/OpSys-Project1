@@ -116,7 +116,7 @@ class Simulator():
     def handleArrive(self,event):
         p = event.process
         if (self.algo == Algorithm.SRT and self.currRunning != None and p.cpuBurstTime < self.currRunning.timeRemaining):
-            print("time {0}ms: Process {1} arrived and will preempt {2} {3}".format(self.t, p.pid, self.currRunning.id, self.queueString()))
+            print("time {0}ms: Process {1} arrived and will preempt {2} {3}".format(self.t, p.pid, self.currRunning.pid, self.queueString()))
         else:
             self.ReadyQueue.put(p)
             print("time {0}ms: Process {1} arrived and added to ready queue {2}".format(self.t, p.pid, self.queueString()))
@@ -126,8 +126,15 @@ class Simulator():
     @param event: the event containing information about the process that just finished its time slice
     """
     def handleFinishSlice(self,event):
-        #todo: fill me in
-        pass
+        self.currRunning.timeRemaining -= self.t_slice
+        print("time {0}ms: Time slice expired; process {1} preempted with {2}ms to go {3}".format(
+            self.t,self.currRunning.pid,self.currRunning.timeRemaining, self.queueString()))
+        
+        #add an event for when the current process is done switching out
+        self.addEvent(EventType.SwitchOut, self.t + self.t_cs//2, self.currRunning)
+        self.currRunning.state = State.Blocked
+        #finally, update the current running process to indicate that nothing is running
+        self.currRunning = None
     
     """
     when a process finishes its burst, add a switch out event
@@ -169,6 +176,18 @@ class Simulator():
         print("time {0}ms: Process {1} completed I/O; added to ready queue {2}".format(self.t, p.pid, self.queueString()))
         
     """
+    when a process is switched in, we display that information and add a new event for its completion time
+    @param event: the event containing information about the process that just switched in
+    """
+    def handleSwitchIn(self,event):
+        print("time {0}ms: Process {1} started using the CPU {2}".format(self.t, self.currRunning.pid, self.queueString()))
+        #if we are in Round Robin mode and the time slice is less than the process remaining time, we interrupt after the timeslice
+        if (self.algo == Algorithm.RR and self.t_slice < event.process.timeRemaining):
+            self.addEvent(EventType.FinishSlice, self.t + self.t_slice, event.process)
+        else:
+            self.addEvent(EventType.FinishBurst, self.t + event.process.timeRemaining, event.process)   
+        
+    """
     get how much context switch time is remaining to switch the current running process out, if any
     @returns the amount of time until the current context switch out finishes, or 0 if no context switch out is currently happening
     """
@@ -188,17 +207,11 @@ class Simulator():
             #grab the next event from the ready queue and set it to the running state
             self.currRunning = self.ReadyQueue.get()
             self.currRunning.state = State.Running
-            self.currRunning.timeRemaining = self.currRunning.cpuBurstTime
+            #if the current running process has no time remaining, it finished its last cpu burst, so set time remaining to the new burst time
+            if self.currRunning.timeRemaining == 0:
+                self.currRunning.timeRemaining = self.currRunning.cpuBurstTime
             self.currRunning.numBursts-=1
-            self.addEvent(EventType.SwitchIn, self.t + self.t_cs//2, self.currRunning)
-            
-    """
-    when a process is switched in, we display that information and add a new event for its completion time
-    @param event: the event containing information about the process that just switched in
-    """
-    def handleSwitchIn(self,event):
-        print("time {0}ms: Process {1} started using the CPU {2}".format(self.t, self.currRunning.pid, self.queueString()))
-        self.addEvent(EventType.FinishBurst, self.t + event.process.timeRemaining, event.process)    
+            self.addEvent(EventType.SwitchIn, self.t + self.t_cs//2, self.currRunning) 
     
     """
     process the specified event, calling the corresponding helper method
