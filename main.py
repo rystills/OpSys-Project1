@@ -26,11 +26,12 @@ read the process info from the specified input file
 def readInput(fileName):
     processes = []
     try:
+        #read the file line by line, ignoring lines that start with a #
         for line in (l for l in open(fileName) if l[0] != '#'):
             processes.append(Process(*(line.strip().split('|'))))
-    except IOError:
+    except (IOError, TypeError):
         exitError("Invalid input file format")
-    
+        
 def main():
     #make sure the user specifies the correct number of arguments
     if (len(sys.argv) < 2):
