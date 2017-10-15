@@ -91,7 +91,7 @@ class Simulator():
     """
     def showStopMessage(self):
         #remove 'Algorithm.' from the algorithm name, and subtract 1 from time since we increment time 1 final time on completion
-        print("time {0}ms: Simulator ended for {1}".format(self.t-1,str(self.algo).split('.')[1]))
+        print("time {0}ms: Simulator ended for {1}".format(self.t,str(self.algo).split('.')[1]))
         
     """
     add an event with the specified time and type for the specified process to the event queue
@@ -129,15 +129,15 @@ class Simulator():
     def handleFinishBurst(self,event):
         if (self.currRunning.numBursts == 0):
             print("time {0}ms: Process {1} terminated {2}".format(self.t, self.currRunning.pid, self.queueString()))
-            self.processes.remove(self.currRunning)
         else:
             print("time {0}ms: Process {1} completed a CPU burst; {2} burst{3} to go {4}".format( 
                     self.t, self.currRunning.pid, self.currRunning.numBursts, "" if self.currRunning.numBursts==1 else "s", self.queueString()))
             print("time {0}ms: Process {1} switching out of CPU; will block on I/O until time {2}ms {3}".format( 
                     self.t, self.currRunning.pid, self.t+self.t_cs//2+self.currRunning.ioTime, self.queueString()))
-            #add an event for when the current process is done switching out
-            self.addEvent(EventType.SwitchOut, self.t + self.t_cs//2, self.currRunning)
-            self.currRunning.state = State.Blocked
+        
+        #add an event for when the current process is done switching out
+        self.addEvent(EventType.SwitchOut, self.t + self.t_cs//2, self.currRunning)
+        self.currRunning.state = State.Blocked
         #finally, update the current running process to indicate that nothing is running
         self.currRunning = None
         
@@ -146,7 +146,10 @@ class Simulator():
     @param event: the event containing information about the process that just switched out
     """
     def handleSwitchOut(self, event):
-        self.addEvent(EventType.FinishBlocked, self.t + event.process.ioTime, event.process)
+        if (event.process.numBursts == 0):
+            self.processes.remove(event.process)
+        else:
+            self.addEvent(EventType.FinishBlocked, self.t + event.process.ioTime, event.process)
         
     """
     when a process is finished with io blocking, add it back to the ready queue
@@ -156,7 +159,7 @@ class Simulator():
         p = event.process
         p.state = State.Ready
         self.ReadyQueue.put(p)
-        print("time {0}ms: Process {1} completed I/O; added to ready queue {2}".format(self.t + p.timeRemaining + 1, p.pid, self.queueString()))
+        print("time {0}ms: Process {1} completed I/O; added to ready queue {2}".format(self.t, p.pid, self.queueString()))
         
     """
     get how much context switch time is remaining to switch the current running process out, if any
@@ -173,12 +176,14 @@ class Simulator():
     check the ready queue for a process to switch in if no process is currently running
     """    
     def updateReadyQueue(self):
-        if (self.currRunning == None and not self.ReadyQueue.empty()):
+        #make sure nothing is running or switching out, and the queue is not empty
+        if (self.currRunning == None and not self.ReadyQueue.empty() and self.switchOutRemainingTime() == 0):
+            #grab the next event from the ready queue and set it to the running state
             self.currRunning = self.ReadyQueue.get()
             self.currRunning.state = State.Running
             self.currRunning.timeRemaining = self.currRunning.cpuBurstTime
             self.currRunning.numBursts-=1
-            self.addEvent(EventType.SwitchIn, self.t + self.t_cs//2 + self.switchOutRemainingTime(), self.currRunning)
+            self.addEvent(EventType.SwitchIn, self.t + self.t_cs//2, self.currRunning)
             
     """
     when a process is switched in, we display that information and add a new event for its completion time
