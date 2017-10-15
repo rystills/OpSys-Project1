@@ -1,6 +1,7 @@
 from enum import Enum
 import queue
 from Process import State
+import copy
 
 """
 Algorithm is a simple enum containing each of the algorithms covered by our simulation
@@ -23,7 +24,7 @@ class Simulator():
         #algo contains the selected algorithm from our enum
         self.algo = algo
         #processes defines a List of all processes that were sent to our CPU
-        self.processes = list(processes)
+        self.processes = copy.deepcopy(processes)
         #hard-coded context switch time (in milliseconds) as specified in the project requirements
         self.t_cs = 8
         #number of processes to simulate - stored in a static variable as specified in the project requirements
@@ -48,6 +49,7 @@ class Simulator():
         #remove 'Algorithm.' from the algorithm name
         print("time {0}ms: Simulator started for {1} {2}".format(self.t, str(self.algo).split('.')[1], self.queueString()))
         while (len(self.processes) != 0):
+            timeChange = 1;
             #Check for process arrival
             for p in self.processes:
                 if (p.arrivalTime == self.t):
@@ -72,10 +74,12 @@ class Simulator():
                         print("time {0}ms: Process {1} switching out of CPU; will block on I/O until time {2}ms {3}".format( 
                                 self.t, self.currRunning.pid, self.t+self.t_cs//2+self.currRunning.ioTime, self.queueString()))
                         self.currRunning.state = State.BLOCKED
-                        self.currRunning.timeRemaining = self.currRunning.ioTime
+                        #add half of the context switch time to the io time as we'll be subtracting that at the end of this update
+                        self.currRunning.timeRemaining = self.currRunning.ioTime + self.t_cs//2
                     
                     self.currRunning = None
                     self.t += self.t_cs//2; #Half the time of a context switch is bringing in the process
+                    timeChange += self.t_cs//2
             
             #TODO handle other algorithms with possible preemptions
             #Context switch in a process if possible and necessary
@@ -86,6 +90,7 @@ class Simulator():
                 self.currRunning.timeRemaining = self.currRunning.cpuBurstTime
                 self.currRunning.numBursts-=1
                 self.t += self.t_cs//2; #Half the time of a context switch is bringing in the process
+                timeChange += self.t_cs//2
                 print("time {0}ms: Process {1} started using the CPU {2}".format(self.t, self.currRunning.pid, self.queueString()))
             
             for p in (proc for proc in sorted(self.processes) if proc.state == State.BLOCKED):
@@ -94,7 +99,12 @@ class Simulator():
                     self.readyQueue.put(p)
                     print("time {0}ms: Process {1} completed I/O; added to ready queue {2}".format(self.t, p.pid, self.queueString()))
                 else:
-                    p.timeRemaining -= 1
+                    #account for context switches, where time has shifted by more than 1 ms
+                    p.timeRemaining -= timeChange
+                    if (p.timeRemaining < 0):
+                        p.state = State.READY
+                        self.readyQueue.put(p)
+                        print("time {0}ms: Process {1} completed I/O; added to ready queue {2}".format(self.t + p.timeRemaining, p.pid, self.queueString()))
             self.t+=1
         #remove 'Algorithm.' from the algorithm name
         print("time {0}ms: Simulator ended for {1}".format(self.t,str(self.algo).split('.')[1]))

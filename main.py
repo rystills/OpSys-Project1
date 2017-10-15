@@ -1,22 +1,13 @@
-from __future__ import print_function
 import sys
 from Process import Process
 from Simulator import Simulator, Algorithm
-
-"""
-print to standard error
-@param args: optional array of arguments
-@param kwargs: optional array of keyword arguments
-"""
-def eprint(*args, **kwargs):
-    print(*args, file=sys.stderr, **kwargs)
     
 """
 display a message on standard error and exit the program
 @param msg: the message to display
 """
 def exitError(msg):
-    eprint("Error:",msg)
+    print("Error:",msg,file=sys.stderr)
     sys.exit(1)
     
 """
