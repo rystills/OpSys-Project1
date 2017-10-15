@@ -27,6 +27,8 @@ class Simulator():
         self.processes = copy.deepcopy(processes)
         #hard-coded context switch time (in milliseconds) as specified in the project requirements
         self.t_cs = 8
+        #hard-coded time (in milliseconds) for a single time-slice
+        self.t_slice = 70
         #number of processes to simulate - stored in a static variable as specified in the project requirements
         self.n = len(self.processes)
         #t stores the current time (in milliseconds) and is iterated for each step of the simulation
@@ -38,8 +40,7 @@ class Simulator():
         
         #initialize the readyQueue depending on the selected algorithm
         if (self.algo == Algorithm.SRT):
-            self.readyQueue = queue.PriorityQueue()
-            
+            self.readyQueue = queue.PriorityQueue() 
         self.run()
         
     """
@@ -48,8 +49,9 @@ class Simulator():
     def run(self):
         #remove 'Algorithm.' from the algorithm name
         print("time {0}ms: Simulator started for {1} {2}".format(self.t, str(self.algo).split('.')[1], self.queueString()))
-        while (True):
-            timeChange = 1;
+        currSlice = 70
+        while (len(self.processes) > 0):
+            self.timeChange = 1;
             #Check for process arrival
             for p in self.processes:
                 if (p.arrivalTime == self.t):
@@ -67,7 +69,6 @@ class Simulator():
                     if (self.currRunning.numBursts == 0):
                         print("time {0}ms: Process {1} terminated {2}".format(self.t, self.currRunning.pid, self.queueString()))
                         self.processes.remove(self.currRunning)
-                        self.currRunning = None
                     else:
                         print("time {0}ms: Process {1} completed a CPU burst; {2} burst{3} to go {4}".format( 
                                 self.t, self.currRunning.pid, self.currRunning.numBursts, "" if self.currRunning.numBursts==1 else "s", self.queueString()))
@@ -78,8 +79,8 @@ class Simulator():
                         self.currRunning.timeRemaining = self.currRunning.ioTime + self.t_cs//2
                     
                     self.currRunning = None
-                    self.t += self.t_cs//2; #Half the time of a context switch is bringing in the process
-                    timeChange += self.t_cs//2
+                    self.t += self.t_cs//2 #Half the time of a context switch is bringing in the process
+                    self.timeChange += self.t_cs//2
             
             #TODO handle other algorithms with possible preemptions
             #Context switch in a process if possible and necessary
@@ -89,26 +90,23 @@ class Simulator():
                 self.currRunning.state = State.RUNNING
                 self.currRunning.timeRemaining = self.currRunning.cpuBurstTime
                 self.currRunning.numBursts-=1
-                self.t += self.t_cs//2; #Half the time of a context switch is bringing in the process
-                timeChange += self.t_cs//2
+                self.t += self.t_cs//2 #Half the time of a context switch is bringing in the process
+                self.timeChange += self.t_cs//2
                 print("time {0}ms: Process {1} started using the CPU {2}".format(self.t, self.currRunning.pid, self.queueString()))
             
             for p in (proc for proc in sorted(self.processes) if proc.state == State.BLOCKED):
                 #account for context switches, where time has shifted by more than 1 ms
-                p.timeRemaining -= timeChange
+                p.timeRemaining -= self.timeChange
                 if (p.timeRemaining < 1):
                     p.state = State.READY
                     self.readyQueue.put(p)
                     print("time {0}ms: Process {1} completed I/O; added to ready queue {2}".format(self.t + p.timeRemaining + 1, p.pid, self.queueString()))
-            
-            #exit once all processes are finished
-            if (len(self.processes) == 0):
-                break
             self.t+=1
             
+        self.t -= 1
         #remove 'Algorithm.' from the algorithm name
         print("time {0}ms: Simulator ended for {1}".format(self.t,str(self.algo).split('.')[1]))
-    
+        
     """
     get the state of the ready queue in string form
     @returns a string representing the contents of the ready queue
