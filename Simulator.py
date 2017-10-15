@@ -141,6 +141,7 @@ class Simulator():
     @param event: the event containing information about the process that just finished its cpu burst
     """
     def handleFinishBurst(self,event):
+        self.currRunning.timeRemaining = 0
         if (self.currRunning.numBursts == 0):
             print("time {0}ms: Process {1} terminated {2}".format(self.t, self.currRunning.pid, self.queueString()))
         else:
@@ -160,10 +161,17 @@ class Simulator():
     @param event: the event containing information about the process that just switched out
     """
     def handleSwitchOut(self, event):
+        #once all bursts are finished, after switching out, the process should be destroyed
         if (event.process.numBursts == 0):
             self.processes.remove(event.process)
         else:
-            self.addEvent(EventType.FinishBlocked, self.t + event.process.ioTime, event.process)
+            #if time remaining is 0, we should begin io
+            if (event.process.timeRemaining == 0):
+                self.addEvent(EventType.FinishBlocked, self.t + event.process.ioTime, event.process)
+            else:
+                #if time remaining is not 0, we simply return to the ready queue
+                event.process.state = State.Ready
+                self.ReadyQueue.put(event.process)
         
     """
     when a process is finished with io blocking, add it back to the ready queue
@@ -180,7 +188,9 @@ class Simulator():
     @param event: the event containing information about the process that just switched in
     """
     def handleSwitchIn(self,event):
-        print("time {0}ms: Process {1} started using the CPU {2}".format(self.t, self.currRunning.pid, self.queueString()))
+        print("time {0}ms: Process {1} started using the CPU {2}{3}".format(
+            self.t, self.currRunning.pid, "" if self.currRunning.timeRemaining == self.currRunning.cpuBurstTime else 
+            "with " + str(self.currRunning.timeRemaining) + "ms remaining ",self.queueString()))
         #if we are in Round Robin mode and the time slice is less than the process remaining time, we interrupt after the timeslice
         if (self.algo == Algorithm.RR and self.t_slice < event.process.timeRemaining):
             self.addEvent(EventType.FinishSlice, self.t + self.t_slice, event.process)
