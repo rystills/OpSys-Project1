@@ -2,6 +2,7 @@ from enum import Enum
 import queue
 from Process import State
 import copy
+from locale import currency
 
 """
 Algorithm is a simple enum containing each of the algorithms covered by our simulation
@@ -17,6 +18,10 @@ EventType is a simple enum containing each of the potential EventTypes that may 
 class EventType(Enum):
     Arrive = 1
     FinishBurst = 2
+    FinishSlice = 3
+    SwitchIn = 4
+    SwitchOut = 5
+    FinishBlocked = 6
     
 """
 the event class is responsible for holding information about events that will occur at calculated points in time
@@ -32,6 +37,13 @@ class Event():
         self.eType = eType
         self.time = time
         self.process = proc
+    
+    """
+    override the less-than operator for priority queue sorting based on event time
+    @param other: the Event we are comparing ourselves to
+    """
+    def __lt__(self, other):
+        return self.time < other.time 
 
 """
 The Simulator class is responsible for emulating our CPU, Running through the input processes using the selected algorithm
@@ -60,7 +72,7 @@ class Simulator():
         #currRunning holds the process which is currently using the CPU
         self.currRunning = None
         #maintain a queue of events so we only need to iterate to happenings rather than going over each and every ms 
-        self.events = queue.Queue()
+        self.events = queue.PriorityQueue()
         
         #initialize the ReadyQueue depending on the selected algorithm
         if (self.algo == Algorithm.SRT):
@@ -88,66 +100,110 @@ class Simulator():
         self.events.put(Event(eventType,time,process))
     
     """
+    when a process arrives, display that information and either add it to the ready queue or preempt the running process
+    @param event: the event corresponding to the arrival
+    """
+    def handleArrive(self,event):
+        p = event.process
+        if (self.algo == Algorithm.SRT and self.currRunning != None and p.cpuBurstTime < self.currRunning.timeRemaining):
+            print("time {0}ms: Process {1} arrived and will preempt {2} {3}".format(self.t, p.pid, self.currRunning.id, self.queueString()))
+        else:
+            self.ReadyQueue.put(p)
+            print("time {0}ms: Process {1} arrived and added to ready queue {2}".format(self.t, p.pid, self.queueString()))
+            
+    """
+    when a process finishes its timeslice, add a switch out event unless there are no processes on the ready queue
+    """
+    def handleFinishSlice(self,event):
+        #todo: fill me in
+        pass
+    
+    """
+    when a process finishes its burst, add a switch out event
+    """
+    def handleFinishBurst(self,event):
+        if (self.currRunning.numBursts == 0):
+            print("time {0}ms: Process {1} terminated {2}".format(self.t, self.currRunning.pid, self.queueString()))
+            self.processes.remove(self.currRunning)
+        else:
+            print("time {0}ms: Process {1} completed a CPU burst; {2} burst{3} to go {4}".format( 
+                    self.t, self.currRunning.pid, self.currRunning.numBursts, "" if self.currRunning.numBursts==1 else "s", self.queueString()))
+            print("time {0}ms: Process {1} switching out of CPU; will block on I/O until time {2}ms {3}".format( 
+                    self.t, self.currRunning.pid, self.t+self.t_cs//2+self.currRunning.ioTime, self.queueString()))
+            #add an event for when the current process is done switching out
+            self.addEvent(EventType.SwitchOut, self.t + self.t_cs//2, self.currRunning)
+            self.currRunning.state = State.Blocked
+        #finally, update the current running process to indicate that nothing is running
+        self.currRunning = None
+        
+    """
+    when a process finishes switching out, add an io block event
+    """
+    def handleSwitchOut(self, event):
+        self.addEvent(EventType.FinishBlocked, self.t + self.currRunning.ioTime, event.process)
+        
+    """
+    when a process is finished with io blocking, add it back to the ready queue
+    """
+    def handleFinishBlockeded(self, event):
+        p = event.process
+        p.state = State.Ready
+        self.ReadyQueue.put(p)
+        print("time {0}ms: Process {1} completed I/O; added to ready queue {2}".format(self.t + p.timeRemaining + 1, p.pid, self.queueString()))
+        
+    """
+    check the ready queue for a process to switch in if no process is currently running
+    """    
+    def updateReadyQueue(self):
+        if (self.currRunning == None and not self.ReadyQueue.empty()):
+            self.currRunning = self.ReadyQueue.get()
+            self.currRunning.state = State.Running
+            self.currRunning.timeRemaining = self.currRunning.cpuBurstTime
+            self.currRunning.numBursts-=1
+            self.addEvent(EventType.SwitchIn, self.t + self.t_cs//2, self.currRunning)
+            
+    """
+    when a process is switched in, we display that information and add a new event for its completion time
+    """
+    def handleSwitchIn(self,event):
+        print("time {0}ms: Process {1} started using the CPU {2}".format(self.t, self.currRunning.pid, self.queueString()))
+        self.addEvent(Event.FinishBurst, self.t + event.process.timeRemaining, event.process)    
+    
+    """
     run this simulation
     """
     def run(self):
         self.showStartMessage()
-        currSlice = 70
+        #populate the event queue with the arrival event for all processes
         for p in self.processes:
             self.addEvent(EventType.Arrive,p.arrivalTime, p)
             
-        while (len(self.processes) > 0):
-            self.timeChange = 1
-            #Check for process arrival
-            for p in self.processes:
-                if (p.arrivalTime == self.t):
-                    if (self.algo == Algorithm.SRT and self.currRunning != None and p.cpuBurstTime < self.currRunning.timeRemaining):
-                        print("time {0}ms: Process {1} arrived and will preempt {2} {3}".format(self.t, p.pid, self.currRunning.id, self.queueString()))
-                    else:
-                        self.ReadyQueue.put(p)
-                        print("time {0}ms: Process {1} arrived and added to ready queue {2}".format(self.t, p.pid, self.queueString()))
+        #jump from event to event
+        while(not self.events.empty()):
+            #get the current event and update time
+            currEvent = self.events.get()
+            self.t = currEvent.time
             
-            #Check if the current Running process is done
-            if (self.currRunning != None):
-                self.currRunning.timeRemaining-=1
-                #If the current process is done with it's CPU burst context switch it out
-                if (self.currRunning.timeRemaining == 0):                    
-                    if (self.currRunning.numBursts == 0):
-                        print("time {0}ms: Process {1} terminated {2}".format(self.t, self.currRunning.pid, self.queueString()))
-                        self.processes.remove(self.currRunning)
-                    else:
-                        print("time {0}ms: Process {1} completed a CPU burst; {2} burst{3} to go {4}".format( 
-                                self.t, self.currRunning.pid, self.currRunning.numBursts, "" if self.currRunning.numBursts==1 else "s", self.queueString()))
-                        print("time {0}ms: Process {1} switching out of CPU; will block on I/O until time {2}ms {3}".format( 
-                                self.t, self.currRunning.pid, self.t+self.t_cs//2+self.currRunning.ioTime, self.queueString()))
-                        self.currRunning.state = State.Blocked
-                        #add half of the context switch time to the io time as we'll be subtracting that at the end of this update
-                        self.currRunning.timeRemaining = self.currRunning.ioTime + self.t_cs//2
-                    
-                    self.currRunning = None
-                    self.t += self.t_cs//2 #Half the time of a context switch is bringing in the process
-                    self.timeChange += self.t_cs//2
-            
-            #TODO handle other algorithms with possible preemptions
-            #Context switch in a process if possible and necessary
-            if (self.currRunning == None and not self.ReadyQueue.empty()):
-                #TODO this might not be handling background IO properly during a context switch
-                self.currRunning = self.ReadyQueue.get()
-                self.currRunning.state = State.Running
-                self.currRunning.timeRemaining = self.currRunning.cpuBurstTime
-                self.currRunning.numBursts-=1
-                self.t += self.t_cs//2 #Half the time of a context switch is bringing in the process
-                self.timeChange += self.t_cs//2
-                print("time {0}ms: Process {1} started using the CPU {2}".format(self.t, self.currRunning.pid, self.queueString()))
-            
-            for p in (proc for proc in sorted(self.processes) if proc.state == State.Blocked):
-                #account for context switches, where time has shifted by more than 1 ms
-                p.timeRemaining -= self.timeChange
-                if (p.timeRemaining < 1):
-                    p.state = State.Ready
-                    self.ReadyQueue.put(p)
-                    print("time {0}ms: Process {1} completed I/O; added to ready queue {2}".format(self.t + p.timeRemaining + 1, p.pid, self.queueString()))
-            self.t+=1
+            #process arrive event type
+            if (currEvent.eType == EventType.Arrive):
+                self.handleArrive(currEvent)
+            #process switch in event type
+            elif (currEvent.eType == EventType.SwitchIn):
+                self.handleSwitchIn(currEvent)
+            #process switch out event type
+            elif (currEvent.eType == EventType.SwitchOut):
+                self.handleSwitchOut(currEvent)
+            #process finish blocked event type
+            elif (currEvent.eType == EventType.FinishBlocked):
+                self.handleFinishBlockeded(currEvent)
+            #process finish burst event type
+            elif (currEvent.eType == EventType.FinishBurst):
+                self.handleFinishBurst(currEvent)
+            elif (currEvent.eType == EventType.FinishSlice):
+                self.handleFinishSlice(currEvent)
+                
+            #check the ready queue, pulling in a new process if nothing is running after event processing has finished   
+            self.updateReadyQueue()
             
         self.showStopMessage()
         
