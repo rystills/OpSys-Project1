@@ -48,7 +48,7 @@ class Simulator():
     def run(self):
         #remove 'Algorithm.' from the algorithm name
         print("time {0}ms: Simulator started for {1} {2}".format(self.t, str(self.algo).split('.')[1], self.queueString()))
-        while (len(self.processes) != 0):
+        while (True):
             timeChange = 1;
             #Check for process arrival
             for p in self.processes:
@@ -100,7 +100,12 @@ class Simulator():
                     p.state = State.READY
                     self.readyQueue.put(p)
                     print("time {0}ms: Process {1} completed I/O; added to ready queue {2}".format(self.t + p.timeRemaining + 1, p.pid, self.queueString()))
+            
+            #exit once all processes are finished
+            if (len(self.processes) == 0):
+                break
             self.t+=1
+            
         #remove 'Algorithm.' from the algorithm name
         print("time {0}ms: Simulator ended for {1}".format(self.t,str(self.algo).split('.')[1]))
     
