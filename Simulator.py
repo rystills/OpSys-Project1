@@ -142,6 +142,7 @@ class Simulator():
     """
     def handleFinishBurst(self,event):
         self.currRunning.timeRemaining = 0
+        self.currRunning.numBursts-=1
         if (self.currRunning.numBursts == 0):
             print("time {0}ms: Process {1} terminated {2}".format(self.t, self.currRunning.pid, self.queueString()))
         else:
@@ -220,7 +221,6 @@ class Simulator():
             #if the current running process has no time remaining, it finished its last cpu burst, so set time remaining to the new burst time
             if self.currRunning.timeRemaining == 0:
                 self.currRunning.timeRemaining = self.currRunning.cpuBurstTime
-            self.currRunning.numBursts-=1
             self.addEvent(EventType.SwitchIn, self.t + self.t_cs//2, self.currRunning) 
     
     """
