@@ -22,3 +22,10 @@ class Process():
         self.cpuBurstTime = int(cpuBurstTime)
         self.numBursts = int(numBursts)
         self.ioTime = int(ioTime)
+        
+    """
+    override the less-than operator for priority queue sorting based on cpu burst time, using PID as a tie breaker
+    @param other: the process we are comparing ourselves to
+    """
+    def __lt__(self, other):
+        return self.cpuBurstTime < other.cpuBurstTime if self.cpuBurstTime != other.cpuBurstTime else self.pid < other.pid
