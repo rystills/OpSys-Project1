@@ -15,12 +15,12 @@ class Algorithm(Enum):
 EventType is a simple enum containing each of the potential EventTypes that may occur in our simulation
 """ 
 class EventType(Enum):
-    Arrive = 1
-    FinishBurst = 2
+    FinishBurst = 1
+    FinishBlocked = 2
     FinishSlice = 3
     SwitchIn = 4
     SwitchOut = 5
-    FinishBlocked = 6
+    Arrive = 6
     
 """
 the event class is responsible for holding information about events that will occur at calculated points in time
@@ -42,7 +42,14 @@ class Event():
     @param other: the Event we are comparing ourselves to
     """
     def __lt__(self, other):
-        return self.time < other.time 
+        #first we compare times
+        if (self.time != other.time):
+            return self.time < other.time
+        #when time is the same, we compare event priority
+        if (self.eType != other.eType):
+            return self.eType.value < other.eType.value
+        #when events are the same, we compare PID
+        return self.process.pid < other.process.pid
 
 """
 The Simulator class is responsible for emulating our CPU, Running through the input processes using the selected algorithm
@@ -84,14 +91,14 @@ class Simulator():
     """
     def showStartMessage(self):
         #remove 'Algorithm.' from the algorithm name
-        print("time {0}ms: Simulator started for {1} {2}".format(self.t, str(self.algo).split('.')[1], self.queueString())) 
+        print("time {0}ms: Simulator started for {1} {2}".format(self.t, self.algo.name, self.queueString())) 
         
     """
     show the stop message when this algorithm finishes
     """
     def showStopMessage(self):
         #remove 'Algorithm.' from the algorithm name, and subtract 1 from time since we increment time 1 final time on completion
-        print("time {0}ms: Simulator ended for {1}".format(self.t,str(self.algo).split('.')[1]))
+        print("time {0}ms: Simulator ended for {1}".format(self.t,self.algo.name))
         
     """
     add an event with the specified time and type for the specified process to the event queue
