@@ -32,6 +32,7 @@ class Process():
         self.numBursts = int(numBursts)
         self.ioTime = int(ioTime)
         self.timeRemaining = 0
+        self.state = None
         
     """
     override the less-than operator for priority queue sorting based on cpu burst time, using PID as a tie breaker
