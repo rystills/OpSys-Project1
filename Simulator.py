@@ -108,6 +108,17 @@ class Simulator():
     """
     def addEvent(self,eventType, time, process):
         self.events.put(Event(eventType,time,process))
+  
+    """
+    add either a FinishSlice event or a FinishBurst event, depending on the current algo and the time remaining in the corresponding process
+    @param event: the event we are currently processing
+    """      
+    def addProcessFinishEvent(self, event):
+        #if we are in Round Robin mode and the time slice is less than the process remaining time, we interrupt after the timeslice
+        if (self.algo == Algorithm.RR and self.t_slice < event.process.timeRemaining):
+            self.addEvent(EventType.FinishSlice, self.t + self.t_slice, event.process)
+        else:
+            self.addEvent(EventType.FinishBurst, self.t + event.process.timeRemaining, event.process)   
     
     """
     when a process arrives, display that information and either add it to the ready queue or preempt the running process
@@ -127,14 +138,20 @@ class Simulator():
     """
     def handleFinishSlice(self,event):
         self.currRunning.timeRemaining -= self.t_slice
-        print("time {0}ms: Time slice expired; process {1} preempted with {2}ms to go {3}".format(
-            self.t,self.currRunning.pid,self.currRunning.timeRemaining, self.queueString()))
+        #if there are no processes in the ready queue, we take the next time slice
+        if (self.ReadyQueue.empty()):
+            print("time {0}ms: Time slice expired; no preemption because ready queue is empty {1}".format(
+                self.t,self.queueString()))
+            self.addProcessFinishEvent(event)
+        else:
+            print("time {0}ms: Time slice expired; process {1} preempted with {2}ms to go {3}".format(
+                self.t,self.currRunning.pid,self.currRunning.timeRemaining, self.queueString()))
         
-        #add an event for when the current process is done switching out
-        self.addEvent(EventType.SwitchOut, self.t + self.t_cs//2, self.currRunning)
-        self.currRunning.state = State.Blocked
-        #finally, update the current running process to indicate that nothing is running
-        self.currRunning = None
+            #add an event for when the current process is done switching out
+            self.addEvent(EventType.SwitchOut, self.t + self.t_cs//2, self.currRunning)
+            self.currRunning.state = State.Blocked
+            #finally, update the current running process to indicate that nothing is running
+            self.currRunning = None
     
     """
     when a process finishes its burst, add a switch out event
@@ -192,11 +209,7 @@ class Simulator():
         print("time {0}ms: Process {1} started using the CPU {2}{3}".format(
             self.t, self.currRunning.pid, "" if self.currRunning.timeRemaining == self.currRunning.cpuBurstTime else 
             "with " + str(self.currRunning.timeRemaining) + "ms remaining ",self.queueString()))
-        #if we are in Round Robin mode and the time slice is less than the process remaining time, we interrupt after the timeslice
-        if (self.algo == Algorithm.RR and self.t_slice < event.process.timeRemaining):
-            self.addEvent(EventType.FinishSlice, self.t + self.t_slice, event.process)
-        else:
-            self.addEvent(EventType.FinishBurst, self.t + event.process.timeRemaining, event.process)   
+        self.addProcessFinishEvent(event)
         
     """
     get how much context switch time is remaining to switch the current running process out, if any
