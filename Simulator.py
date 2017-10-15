@@ -2,7 +2,6 @@ from enum import Enum
 import queue
 from Process import State
 import copy
-from locale import currency
 
 """
 Algorithm is a simple enum containing each of the algorithms covered by our simulation
@@ -77,6 +76,7 @@ class Simulator():
         #initialize the ReadyQueue depending on the selected algorithm
         if (self.algo == Algorithm.SRT):
             self.ReadyQueue = queue.PriorityQueue() 
+        #begin the simulation
         self.run()
         
     """
@@ -95,13 +95,16 @@ class Simulator():
         
     """
     add an event with the specified time and type for the specified process to the event queue
+    @param eventType: the type of event to add
+    @param time: the time at which the event will occur
+    @param process: the process to which the event corresponds
     """
     def addEvent(self,eventType, time, process):
         self.events.put(Event(eventType,time,process))
     
     """
     when a process arrives, display that information and either add it to the ready queue or preempt the running process
-    @param event: the event corresponding to the arrival
+    @param event: @param event: the event containing information about the process that just arrived
     """
     def handleArrive(self,event):
         p = event.process
@@ -113,6 +116,7 @@ class Simulator():
             
     """
     when a process finishes its timeslice, add a switch out event unless there are no processes on the ready queue
+    @param event: the event containing information about the process that just finished its time slice
     """
     def handleFinishSlice(self,event):
         #todo: fill me in
@@ -120,6 +124,7 @@ class Simulator():
     
     """
     when a process finishes its burst, add a switch out event
+    @param event: the event containing information about the process that just finished its cpu burst
     """
     def handleFinishBurst(self,event):
         if (self.currRunning.numBursts == 0):
@@ -138,12 +143,14 @@ class Simulator():
         
     """
     when a process finishes switching out, add an io block event
+    @param event: the event containing information about the process that just switched out
     """
     def handleSwitchOut(self, event):
-        self.addEvent(EventType.FinishBlocked, self.t + self.currRunning.ioTime, event.process)
+        self.addEvent(EventType.FinishBlocked, self.t + event.process.ioTime, event.process)
         
     """
     when a process is finished with io blocking, add it back to the ready queue
+    @param event: the event containing information about the process that just finished io blocking
     """
     def handleFinishBlockeded(self, event):
         p = event.process
@@ -164,11 +171,36 @@ class Simulator():
             
     """
     when a process is switched in, we display that information and add a new event for its completion time
+    @param event: the event containing information about the process that just switched in
     """
     def handleSwitchIn(self,event):
         print("time {0}ms: Process {1} started using the CPU {2}".format(self.t, self.currRunning.pid, self.queueString()))
-        self.addEvent(Event.FinishBurst, self.t + event.process.timeRemaining, event.process)    
+        self.addEvent(EventType.FinishBurst, self.t + event.process.timeRemaining, event.process)    
     
+    """
+    process the specified event, calling the corresponding helper method
+    @param event: the event to process
+    """
+    def processEvent(self, event):
+        #process arrive event type
+        if (event.eType == EventType.Arrive):
+            self.handleArrive(event)
+        #process switch in event type
+        elif (event.eType == EventType.SwitchIn):
+            self.handleSwitchIn(event)
+        #process switch out event type
+        elif (event.eType == EventType.SwitchOut):
+            self.handleSwitchOut(event)
+        #process finish blocked event type
+        elif (event.eType == EventType.FinishBlocked):
+            self.handleFinishBlockeded(event)
+        #process finish burst event type
+        elif (event.eType == EventType.FinishBurst):
+            self.handleFinishBurst(event)
+        #process finish slice event type
+        elif (event.eType == EventType.FinishSlice):
+            self.handleFinishSlice(event)
+
     """
     run this simulation
     """
@@ -184,23 +216,8 @@ class Simulator():
             currEvent = self.events.get()
             self.t = currEvent.time
             
-            #process arrive event type
-            if (currEvent.eType == EventType.Arrive):
-                self.handleArrive(currEvent)
-            #process switch in event type
-            elif (currEvent.eType == EventType.SwitchIn):
-                self.handleSwitchIn(currEvent)
-            #process switch out event type
-            elif (currEvent.eType == EventType.SwitchOut):
-                self.handleSwitchOut(currEvent)
-            #process finish blocked event type
-            elif (currEvent.eType == EventType.FinishBlocked):
-                self.handleFinishBlockeded(currEvent)
-            #process finish burst event type
-            elif (currEvent.eType == EventType.FinishBurst):
-                self.handleFinishBurst(currEvent)
-            elif (currEvent.eType == EventType.FinishSlice):
-                self.handleFinishSlice(currEvent)
+            #process the current event
+            self.processEvent(currEvent)
                 
             #check the ready queue, pulling in a new process if nothing is running after event processing has finished   
             self.updateReadyQueue()
