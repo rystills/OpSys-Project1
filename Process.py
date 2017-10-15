@@ -3,9 +3,9 @@ from enum import Enum
 State is a simple enum containing each of the potential process states
 """
 class State(Enum):
-    READY = 1
-    RUNNING = 2
-    BLOCKED = 3
+    Ready = 1
+    Running = 2
+    Blocked = 3
 
 """
 The Process class represents a single process on our CPU

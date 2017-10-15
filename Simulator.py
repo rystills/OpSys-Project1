@@ -10,9 +10,31 @@ class Algorithm(Enum):
     FCFS = 1
     SRT = 2
     RR = 3
+   
+"""
+EventType is a simple enum containing each of the potential EventTypes that may occur in our simulation
+""" 
+class EventType(Enum):
+    Arrive = 1
+    FinishBurst = 2
+    
+"""
+the event class is responsible for holding information about events that will occur at calculated points in time
+"""
+class Event():
+    """
+    event constructor: create a new event with the specified time, type, and process
+    @param type: the EventType for this event
+    @param time: the time (in milliseconds) at which this event will occur
+    @param proc: the process to which this event corresponds
+    """
+    def __init__(self,eType,time,proc):
+        self.eType = eType
+        self.time = time
+        self.process = proc
 
 """
-The Simulator class is responsible for emulating our CPU, running through the input processes using the selected algorithm
+The Simulator class is responsible for emulating our CPU, Running through the input processes using the selected algorithm
 """
 class Simulator():
     """
@@ -33,35 +55,59 @@ class Simulator():
         self.n = len(self.processes)
         #t stores the current time (in milliseconds) and is iterated for each step of the simulation
         self.t = 0
-        #readyQueue defines a Queue of processes in the ready state (able to begin their CPU burst)
-        self.readyQueue = queue.Queue()
+        #ReadyQueue defines a Queue of processes in the Ready state (able to begin their CPU burst)
+        self.ReadyQueue = queue.Queue()
         #currRunning holds the process which is currently using the CPU
         self.currRunning = None
+        #maintain a queue of events so we only need to iterate to happenings rather than going over each and every ms 
+        self.events = queue.Queue()
         
-        #initialize the readyQueue depending on the selected algorithm
+        #initialize the ReadyQueue depending on the selected algorithm
         if (self.algo == Algorithm.SRT):
-            self.readyQueue = queue.PriorityQueue() 
+            self.ReadyQueue = queue.PriorityQueue() 
         self.run()
         
+    """
+    show the stop message when this algorithm begins
+    """
+    def showStartMessage(self):
+        #remove 'Algorithm.' from the algorithm name
+        print("time {0}ms: Simulator started for {1} {2}".format(self.t, str(self.algo).split('.')[1], self.queueString())) 
+        
+    """
+    show the stop message when this algorithm finishes
+    """
+    def showStopMessage(self):
+        #remove 'Algorithm.' from the algorithm name, and subtract 1 from time since we increment time 1 final time on completion
+        print("time {0}ms: Simulator ended for {1}".format(self.t-1,str(self.algo).split('.')[1]))
+        
+    """
+    add an event with the specified time and type for the specified process to the event queue
+    """
+    def addEvent(self,eventType, time, process):
+        self.events.put(Event(eventType,time,process))
+    
     """
     run this simulation
     """
     def run(self):
-        #remove 'Algorithm.' from the algorithm name
-        print("time {0}ms: Simulator started for {1} {2}".format(self.t, str(self.algo).split('.')[1], self.queueString()))
+        self.showStartMessage()
         currSlice = 70
+        for p in self.processes:
+            self.addEvent(EventType.Arrive,p.arrivalTime, p)
+            
         while (len(self.processes) > 0):
-            self.timeChange = 1;
+            self.timeChange = 1
             #Check for process arrival
             for p in self.processes:
                 if (p.arrivalTime == self.t):
                     if (self.algo == Algorithm.SRT and self.currRunning != None and p.cpuBurstTime < self.currRunning.timeRemaining):
                         print("time {0}ms: Process {1} arrived and will preempt {2} {3}".format(self.t, p.pid, self.currRunning.id, self.queueString()))
                     else:
-                        self.readyQueue.put(p)
+                        self.ReadyQueue.put(p)
                         print("time {0}ms: Process {1} arrived and added to ready queue {2}".format(self.t, p.pid, self.queueString()))
             
-            #Check if the current running process is done
+            #Check if the current Running process is done
             if (self.currRunning != None):
                 self.currRunning.timeRemaining-=1
                 #If the current process is done with it's CPU burst context switch it out
@@ -74,7 +120,7 @@ class Simulator():
                                 self.t, self.currRunning.pid, self.currRunning.numBursts, "" if self.currRunning.numBursts==1 else "s", self.queueString()))
                         print("time {0}ms: Process {1} switching out of CPU; will block on I/O until time {2}ms {3}".format( 
                                 self.t, self.currRunning.pid, self.t+self.t_cs//2+self.currRunning.ioTime, self.queueString()))
-                        self.currRunning.state = State.BLOCKED
+                        self.currRunning.state = State.Blocked
                         #add half of the context switch time to the io time as we'll be subtracting that at the end of this update
                         self.currRunning.timeRemaining = self.currRunning.ioTime + self.t_cs//2
                     
@@ -84,28 +130,26 @@ class Simulator():
             
             #TODO handle other algorithms with possible preemptions
             #Context switch in a process if possible and necessary
-            if (self.currRunning == None and not self.readyQueue.empty()):
+            if (self.currRunning == None and not self.ReadyQueue.empty()):
                 #TODO this might not be handling background IO properly during a context switch
-                self.currRunning = self.readyQueue.get()
-                self.currRunning.state = State.RUNNING
+                self.currRunning = self.ReadyQueue.get()
+                self.currRunning.state = State.Running
                 self.currRunning.timeRemaining = self.currRunning.cpuBurstTime
                 self.currRunning.numBursts-=1
                 self.t += self.t_cs//2 #Half the time of a context switch is bringing in the process
                 self.timeChange += self.t_cs//2
                 print("time {0}ms: Process {1} started using the CPU {2}".format(self.t, self.currRunning.pid, self.queueString()))
             
-            for p in (proc for proc in sorted(self.processes) if proc.state == State.BLOCKED):
+            for p in (proc for proc in sorted(self.processes) if proc.state == State.Blocked):
                 #account for context switches, where time has shifted by more than 1 ms
                 p.timeRemaining -= self.timeChange
                 if (p.timeRemaining < 1):
-                    p.state = State.READY
-                    self.readyQueue.put(p)
+                    p.state = State.Ready
+                    self.ReadyQueue.put(p)
                     print("time {0}ms: Process {1} completed I/O; added to ready queue {2}".format(self.t + p.timeRemaining + 1, p.pid, self.queueString()))
             self.t+=1
             
-        self.t -= 1
-        #remove 'Algorithm.' from the algorithm name
-        print("time {0}ms: Simulator ended for {1}".format(self.t,str(self.algo).split('.')[1]))
+        self.showStopMessage()
         
     """
     get the state of the ready queue in string form
@@ -113,8 +157,8 @@ class Simulator():
     """
     def queueString(self):
         ans = ""
-        if (self.readyQueue.empty()):
+        if (self.ReadyQueue.empty()):
             ans = " <empty>"
-        for p  in self.readyQueue.queue:
+        for p  in self.ReadyQueue.queue:
             ans += " "+p.pid
         return "[Q{0}]".format(ans)
