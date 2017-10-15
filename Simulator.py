@@ -94,17 +94,12 @@ class Simulator():
                 print("time {0}ms: Process {1} started using the CPU {2}".format(self.t, self.currRunning.pid, self.queueString()))
             
             for p in (proc for proc in sorted(self.processes) if proc.state == State.BLOCKED):
-                if (p.timeRemaining == 0):
+                #account for context switches, where time has shifted by more than 1 ms
+                p.timeRemaining -= timeChange
+                if (p.timeRemaining < 1):
                     p.state = State.READY
                     self.readyQueue.put(p)
-                    print("time {0}ms: Process {1} completed I/O; added to ready queue {2}".format(self.t, p.pid, self.queueString()))
-                else:
-                    #account for context switches, where time has shifted by more than 1 ms
-                    p.timeRemaining -= timeChange
-                    if (p.timeRemaining < 0):
-                        p.state = State.READY
-                        self.readyQueue.put(p)
-                        print("time {0}ms: Process {1} completed I/O; added to ready queue {2}".format(self.t + p.timeRemaining, p.pid, self.queueString()))
+                    print("time {0}ms: Process {1} completed I/O; added to ready queue {2}".format(self.t + p.timeRemaining + 1, p.pid, self.queueString()))
             self.t+=1
         #remove 'Algorithm.' from the algorithm name
         print("time {0}ms: Simulator ended for {1}".format(self.t,str(self.algo).split('.')[1]))
