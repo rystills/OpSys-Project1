@@ -1,9 +1,3 @@
-'''
-Created on Oct 15, 2017
-
-@author: Ryan
-'''
-
 """
 The Process class represents a single process on our CPU
 """
@@ -21,6 +15,7 @@ class Process():
         for i in [arrivalTime,cpuBurstTime,numBursts,ioTime]:
             if (not i.isdigit()):
                 raise TypeError()
+            
         #assign each argument to a local variable
         self.pid = pid
         self.arrivalTime = int(arrivalTime)
