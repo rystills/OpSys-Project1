@@ -1,3 +1,12 @@
+from enum import Enum
+"""
+State is a simple enum containing each of the potential process states
+"""
+class State(Enum):
+    READY = 1
+    RUNNING = 2
+    BLOCKED = 3
+
 """
 The Process class represents a single process on our CPU
 """
@@ -22,6 +31,7 @@ class Process():
         self.cpuBurstTime = int(cpuBurstTime)
         self.numBursts = int(numBursts)
         self.ioTime = int(ioTime)
+        self.timeRemaining = 0
         
     """
     override the less-than operator for priority queue sorting based on cpu burst time, using PID as a tie breaker
