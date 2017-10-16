@@ -139,7 +139,7 @@ class Simulator():
     """preempt the running process, switching it with the current process
     @param event: the event corresponding to the process which will preempt the running process
     """
-    def preempt(self, event):
+    def preempt(self, event):        
         #switch the current running process out and the preempting process in
         self.addEvent(EventType.SwitchOut, self.t + self.t_cs//2, self.currRunning)
         self.addEvent(EventType.SwitchIn, self.t + self.t_cs, event.process)
@@ -149,10 +149,13 @@ class Simulator():
                 #update the time remaining for our running event to reflect the actual time left, then remove the finish event
                 self.currRunning.timeRemaining = e.time - self.t
                 self.events.queue.remove(e)
-                break;
+                break
             
         #now set currRunning to the preempting event
-        self.currRunning = event.process      
+        self.currRunning = event.process
+        
+        #update number of preemptions
+        self.totalPreemptions += 1
   
     """
     add either a FinishSlice event or a FinishBurst event, depending on the current algo and the time remaining in the corresponding process
@@ -200,6 +203,9 @@ class Simulator():
             self.ReadyQueue.put(self.currRunning)
             #finally, update the current running process to indicate that nothing is running
             self.currRunning = None
+            
+            #update number of preemptions
+            self.totalPreemptions += 1
     
     """
     when a process finishes its burst, add a switch out event
@@ -264,6 +270,9 @@ class Simulator():
             self.t, self.currRunning.pid, "" if self.currRunning.timeRemaining == self.currRunning.cpuBurstTime else 
             "with " + str(self.currRunning.timeRemaining) + "ms remaining ",self.queueString()))
         self.addProcessFinishEvent(event)
+        
+        #update number of context switches
+        self.totalContextSwitches += 1
         
     """
     get how much context switch time is remaining to switch the current running process out, if any
