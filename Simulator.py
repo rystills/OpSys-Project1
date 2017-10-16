@@ -202,10 +202,12 @@ class Simulator():
             self.currRunning.state = State.Blocked
             #add this process back to the ready queue right away as per the expected output
             self.ReadyQueue.put(self.currRunning)
+            event.process.lastArrivalTime = self.t
+            
             #finally, update the current running process to indicate that nothing is running
             self.currRunning = None
             
-            #update number of preemptions
+            #update number of preemptions stat
             self.totalPreemptions += 1
     
     """
