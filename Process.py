@@ -39,4 +39,6 @@ class Process():
     @param other: the process we are comparing ourselves to
     """
     def __lt__(self, other):
-        return self.cpuBurstTime < other.cpuBurstTime if self.cpuBurstTime != other.cpuBurstTime else self.pid < other.pid
+        if (self.timeRemaining != other.timeRemaining):
+            return self.timeRemaining < other.timeRemaining
+        return self.pid < other.pid

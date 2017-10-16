@@ -16,8 +16,8 @@ EventType is a simple enum containing each of the potential EventTypes that may 
 """ 
 class EventType(Enum):
     FinishBurst = 1
-    FinishBlocked = 2
-    FinishSlice = 3
+    FinishSlice = 2
+    FinishBlocked = 3
     SwitchIn = 4
     SwitchOut = 5
     Arrive = 6
@@ -322,6 +322,10 @@ class Simulator():
         ans = ""
         if (self.ReadyQueue.empty()):
             ans = " <empty>"
-        for p  in self.ReadyQueue.queue:
-            ans += " "+p.pid
+        #copy our queue and call get() for each element to gather the copied queue's elements in priority order
+        qcopy = (queue.PriorityQueue() if self.algo == Algorithm.SRT else queue.Queue())
+        for p in self.ReadyQueue.queue:
+            qcopy.put(p)
+        while (not qcopy.empty()):
+            ans += " " + qcopy.get().pid
         return "[Q{0}]".format(ans)
