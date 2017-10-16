@@ -2,6 +2,8 @@ from enum import Enum
 import queue
 from Process import State
 import copy
+import os
+import sys
 
 """
 Algorithm is a simple enum containing each of the algorithms covered by our simulation
@@ -85,6 +87,17 @@ class Simulator():
             self.ReadyQueue = queue.PriorityQueue() 
         #begin the simulation
         self.run()
+        #upon simulation completion, output runtime statistics
+        self.outputStats()
+        
+    """
+    output runtime statistics to the specified output file
+    """
+    def outputStats(self):
+        fName = sys.argv[2]
+        fMode = 'a' if os.path.exists(fName) else 'w'
+        with open(fName,fMode) as f:
+            f.write("Algorithm {0}\n".format(self.algo.name))
         
     """
     show the stop message when this algorithm begins
