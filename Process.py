@@ -34,6 +34,10 @@ class Process():
         self.timeRemaining = self.cpuBurstTime
         self.state = None
         
+        #additional variables for stat tracking
+        self.totalBursts = self.numBursts
+        self.lastArrivalTime = self.arrivalTime
+                
     """
     override the less-than operator for priority queue sorting based on cpu burst time, using PID as a tie breaker
     @param other: the process we are comparing ourselves to

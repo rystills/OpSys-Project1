@@ -87,7 +87,8 @@ class Simulator():
             self.ReadyQueue = queue.PriorityQueue() 
             
         #initialize stat counters
-        self.avgBurstTime = 0
+        #burst time can be calculated by simply averaging the input burst times
+        self.avgBurstTime = sum((b.cpuBurstTime for b in (b for b in self.processes))) / self.n
         self.avgWaitTime = 0
         self.avgTurnaroundTime = 0
         self.totalContextSwitches = 0
@@ -224,6 +225,10 @@ class Simulator():
         #add an event for when the current process is done switching out
         self.addEvent(EventType.SwitchOut, self.t + self.t_cs//2, self.currRunning)
         self.currRunning.state = State.Blocked
+        
+        #update turnaround time now that this process has finished a cpu burst, and include half of the context switch time to factor in the switch out
+        self.avgTurnaroundTime += (self.t - self.currRunning.lastArrivalTime + self.t_cs//2) / self.currRunning.totalBursts
+        
         #finally, update the current running process to indicate that nothing is running
         self.currRunning = None
         
@@ -254,6 +259,10 @@ class Simulator():
     def handleFinishBlocked(self, event):
         p = event.process
         p.state = State.Ready
+        #update lastArrivalTime each time a process returns to the ready queue on a fresh cpu burst, so we can calculate turnaround time correctly
+        if (p.timeRemaining == p.cpuBurstTime):
+            p.lastArrivalTime = self.t
+            
         if (self.algo == Algorithm.SRT and self.currRunning != None and p.timeRemaining < self.currRunningTimeRemaining()):
             print("time {0}ms: Process {1} completed I/O and will preempt {2} {3}".format(self.t, p.pid, self.currRunning.pid, self.queueString()))
             self.preempt(event)
@@ -352,6 +361,9 @@ class Simulator():
             if (len(self.events.queue) == 0 or self.events.queue[0].time != self.t):
                 self.updateReadyQueue()
             
+        #once we're done running, aggregate our average stats
+        self.avgTurnaroundTime /= self.n
+                
         self.showStopMessage()
         
     """
