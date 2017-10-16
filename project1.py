@@ -19,7 +19,7 @@ def readInput(fileName):
     processes = []
     try:
         #read the file line by line, ignoring lines that start with a #
-        for line in (l for l in open(fileName) if l[0] != '#'):
+        for line in (l for l in open(fileName) if l[0] != '#' and l.strip() != ""):
             processes.append(Process(*(line.strip().split('|'))))
     except (IOError, TypeError):
         exitError("Invalid input file format")
