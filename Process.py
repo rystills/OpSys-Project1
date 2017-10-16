@@ -31,7 +31,7 @@ class Process():
         self.cpuBurstTime = int(cpuBurstTime)
         self.numBursts = int(numBursts)
         self.ioTime = int(ioTime)
-        self.timeRemaining = 0
+        self.timeRemaining = self.cpuBurstTime
         self.state = None
         
     """

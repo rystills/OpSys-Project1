@@ -108,6 +108,24 @@ class Simulator():
     """
     def addEvent(self,eventType, time, process):
         self.events.put(Event(eventType,time,process))
+    
+    """preempt the running process, switching it with the current process
+    @param event: the event corresponding to the process which will preempt the running process
+    """
+    def preempt(self, event):
+        #switch the current running process out and the preempting process in
+        self.addEvent(EventType.SwitchOut, self.t + self.t_cs//2, self.currRunning)
+        self.addEvent(EventType.SwitchIn, self.t + self.t_cs, event.process)
+        #remove the finishBurst event corresponding to the current process since it has been preempted
+        for e in self.events.queue:
+            if (e.eType == EventType.FinishBurst):
+                #update the time remaining for our running event to reflect the actual time left, then remove the finish event
+                self.currRunning.timeRemaining = e.time - self.t
+                self.events.queue.remove(e)
+                break;
+            
+        #now set currRunning to the preempting event
+        self.currRunning = event.process      
   
     """
     add either a FinishSlice event or a FinishBurst event, depending on the current algo and the time remaining in the corresponding process
@@ -128,6 +146,7 @@ class Simulator():
         p = event.process
         if (self.algo == Algorithm.SRT and self.currRunning != None and p.cpuBurstTime < self.currRunning.timeRemaining):
             print("time {0}ms: Process {1} arrived and will preempt {2} {3}".format(self.t, p.pid, self.currRunning.pid, self.queueString()))
+            self.preempt(event)
         else:
             self.ReadyQueue.put(p)
             print("time {0}ms: Process {1} arrived and added to ready queue {2}".format(self.t, p.pid, self.queueString()))
@@ -183,8 +202,9 @@ class Simulator():
         if (event.process.numBursts == 0):
             self.processes.remove(event.process)
         else:
-            #if time remaining is 0, we should begin io
+            #if time remaining is 0, we should begin io and set time remaining to the new burst time
             if (event.process.timeRemaining == 0):
+                event.process.timeRemaining = event.process.cpuBurstTime
                 self.addEvent(EventType.FinishBlocked, self.t + event.process.ioTime, event.process)
             else:
                 #if time remaining is not 0, we simply return to the ready queue
@@ -231,9 +251,6 @@ class Simulator():
             #grab the next event from the ready queue and set it to the running state
             self.currRunning = self.ReadyQueue.get()
             self.currRunning.state = State.Running
-            #if the current running process has no time remaining, it finished its last cpu burst, so set time remaining to the new burst time
-            if self.currRunning.timeRemaining == 0:
-                self.currRunning.timeRemaining = self.currRunning.cpuBurstTime
             self.addEvent(EventType.SwitchIn, self.t + self.t_cs//2, self.currRunning) 
     
     """
