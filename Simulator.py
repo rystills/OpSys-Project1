@@ -169,6 +169,8 @@ class Simulator():
             #add an event for when the current process is done switching out
             self.addEvent(EventType.SwitchOut, self.t + self.t_cs//2, self.currRunning)
             self.currRunning.state = State.Blocked
+            #add this process back to the ready queue right away as per the expected output
+            self.ReadyQueue.put(self.currRunning)
             #finally, update the current running process to indicate that nothing is running
             self.currRunning = None
     
@@ -208,7 +210,9 @@ class Simulator():
             else:
                 #if time remaining is not 0, we simply return to the ready queue
                 event.process.state = State.Ready
-                self.ReadyQueue.put(event.process)
+                #expected output requires us to add processes back to the ready queue before switching out in RR, so no need to do it here
+                if (self.algo != Algorithm.RR):
+                    self.ReadyQueue.put(event.process)
         
     """
     when a process is finished with io blocking, add it back to the ready queue
@@ -322,7 +326,7 @@ class Simulator():
         ans = ""
         if (self.ReadyQueue.empty()):
             ans = " <empty>"
-        #copy our queue and call get() for each element to gather the copied queue's elements in priority order
+        #copy our queue and call get() for each element to gather the copied queue's elements in sorted order
         qcopy = (queue.PriorityQueue() if self.algo == Algorithm.SRT else queue.Queue())
         for p in self.ReadyQueue.queue:
             qcopy.put(p)
