@@ -240,6 +240,12 @@ class Simulator():
         #once all bursts are finished, after switching out, the process should be destroyed
         if (event.process.numBursts == 0):
             self.processes.remove(event.process)
+            
+            #now that the process is finished with the cpu, average its wait time
+            event.process.avgWaitTime /= event.process.totalBursts
+            #add the process' final wait time to our overall average
+            self.avgWaitTime += event.process.avgWaitTime / self.n
+            
         else:
             #if time remaining is 0, we should begin io and set time remaining to the new burst time
             if (event.process.timeRemaining == 0):
@@ -314,6 +320,9 @@ class Simulator():
             self.currRunning = self.ReadyQueue.get()
             self.currRunning.state = State.Running
             self.addEvent(EventType.SwitchIn, self.t + self.t_cs//2, self.currRunning) 
+            
+            #increment average wait time by how long this process was in the queue
+            self.currRunning.avgWaitTime += self.t - self.currRunning.lastArrivalTime
     
     """
     process the specified event, calling the corresponding helper method
