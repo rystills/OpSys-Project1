@@ -85,8 +85,17 @@ class Simulator():
         #initialize the ReadyQueue depending on the selected algorithm
         if (self.algo == Algorithm.SRT):
             self.ReadyQueue = queue.PriorityQueue() 
+            
+        #initialize stat counters
+        self.avgBurstTime = 0
+        self.avgWaitTime = 0
+        self.avgTurnaroundTime = 0
+        self.totalContextSwitches = 0
+        self.totalPreemptions = 0
+        
         #begin the simulation
         self.run()
+        
         #upon simulation completion, output runtime statistics
         self.outputStats()
         
@@ -98,6 +107,11 @@ class Simulator():
         fMode = 'a' if os.path.exists(fName) else 'w'
         with open(fName,fMode) as f:
             f.write("Algorithm {0}\n".format(self.algo.name))
+            f.write("-- average CPU burst time: {0}ms\n".format(self.avgBurstTime))
+            f.write("-- average wait time: {0}ms\n".format(self.avgWaitTime))
+            f.write("-- average turnaround time: {0}ms\n".format(self.avgTurnaroundTime))
+            f.write("-- total number of context switches: {0}\n".format(self.totalContextSwitches))
+            f.write("-- total number of preemptions: {0}\n".format(self.totalPreemptions))
         
     """
     show the stop message when this algorithm begins
