@@ -98,7 +98,7 @@ class Simulator():
     """
     def showStopMessage(self):
         #remove 'Algorithm.' from the algorithm name, and subtract 1 from time since we increment time 1 final time on completion
-        print("time {0}ms: Simulator ended for {1}".format(self.t,self.algo.name))
+        print("time {0}ms: Simulator ended for {1}".format(self.t,self.algo.name),end='')
         
     """
     add an event with the specified time and type for the specified process to the event queue
