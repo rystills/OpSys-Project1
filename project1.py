@@ -18,7 +18,7 @@ read the process info from the specified input file
 def readInput(fileName):
     processes = []
     try:
-        #read the file line by line, ignoring lines that start with a #
+        #read the file line by line, ignoring lines that start with a # or lines that are entirely whitespace
         for line in (l for l in open(fileName) if l[0] != '#' and l.strip() != ""):
             processes.append(Process(*(line.strip().split('|'))))
     except (IOError, TypeError):

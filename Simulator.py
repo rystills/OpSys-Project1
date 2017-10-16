@@ -217,7 +217,7 @@ class Simulator():
     def handleFinishBlocked(self, event):
         p = event.process
         p.state = State.Ready
-        if (self.algo == Algorithm.SRT and self.currRunning != None and p.timeRemaining < self.currRunning.timeRemaining):
+        if (self.algo == Algorithm.SRT and self.currRunning != None and p.timeRemaining < self.currRunningTimeRemaining()):
             print("time {0}ms: Process {1} completed I/O and will preempt {2} {3}".format(self.t, p.pid, self.currRunning.pid, self.queueString()))
             self.preempt(event)
         else:
@@ -244,6 +244,16 @@ class Simulator():
                 #we found a switch out event: return the difference between the current time and the event time
                 return e.time - self.t
         return 0
+    
+    """
+    get the real timeRemaining for the currently running process
+    """
+    def currRunningTimeRemaining(self):
+        #first iterate through the queue to find this process's burst completion event
+        for e in self.events.queue:
+            if (e.eType == EventType.FinishBurst):
+                #we found a burst finish event: return the time left until the burst completion
+                return e.time - self.t        
 
     """
     check the ready queue for a process to switch in if no process is currently running
