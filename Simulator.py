@@ -17,9 +17,9 @@ EventType is a simple enum containing each of the potential EventTypes that may 
 class EventType(Enum):
     FinishBurst = 1
     FinishSlice = 2
-    FinishBlocked = 3
-    SwitchIn = 4
-    SwitchOut = 5
+    SwitchIn = 3
+    SwitchOut = 4
+    FinishBlocked = 5
     Arrive = 6
     
 """
