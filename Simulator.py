@@ -174,9 +174,8 @@ class Simulator():
     
     """
     when a process finishes its burst, add a switch out event
-    @param event: the event containing information about the process that just finished its cpu burst
     """
-    def handleFinishBurst(self,event):
+    def handleFinishBurst(self):
         self.currRunning.timeRemaining = 0
         self.currRunning.numBursts-=1
         if (self.currRunning.numBursts == 0):
@@ -215,11 +214,15 @@ class Simulator():
     when a process is finished with io blocking, add it back to the ready queue
     @param event: the event containing information about the process that just finished io blocking
     """
-    def handleFinishBlockeded(self, event):
+    def handleFinishBlocked(self, event):
         p = event.process
         p.state = State.Ready
-        self.ReadyQueue.put(p)
-        print("time {0}ms: Process {1} completed I/O; added to ready queue {2}".format(self.t, p.pid, self.queueString()))
+        if (self.algo == Algorithm.SRT and self.currRunning != None and p.timeRemaining < self.currRunning.timeRemaining):
+            print("time {0}ms: Process {1} completed I/O and will preempt {2} {3}".format(self.t, p.pid, self.currRunning.pid, self.queueString()))
+            self.preempt(event)
+        else:
+            self.ReadyQueue.put(p)
+            print("time {0}ms: Process {1} completed I/O; added to ready queue {2}".format(self.t, p.pid, self.queueString()))
         
     """
     when a process is switched in, we display that information and add a new event for its completion time
@@ -269,10 +272,10 @@ class Simulator():
             self.handleSwitchOut(event)
         #process finish blocked event type
         elif (event.eType == EventType.FinishBlocked):
-            self.handleFinishBlockeded(event)
+            self.handleFinishBlocked(event)
         #process finish burst event type
         elif (event.eType == EventType.FinishBurst):
-            self.handleFinishBurst(event)
+            self.handleFinishBurst()
         #process finish slice event type
         elif (event.eType == EventType.FinishSlice):
             self.handleFinishSlice(event)
