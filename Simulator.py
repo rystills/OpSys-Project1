@@ -258,7 +258,8 @@ class Simulator():
                 #expected output requires us to add processes back to the ready queue before switching out in RR, so no need to do it here
                 if (self.algo != Algorithm.RR):
                     self.ReadyQueue.put(event.process)
-                    event.process.lastArrivalTime = self.t
+                    #as per the expected output the process should record time as though it was ready immediately, so subtract the switch-out time from lastArrivalTime
+                    event.process.lastArrivalTime = self.t - self.t_cs//2
         
     """
     when a process is finished with io blocking, add it back to the ready queue
