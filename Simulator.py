@@ -87,8 +87,11 @@ class Simulator():
             self.ReadyQueue = queue.PriorityQueue() 
             
         #initialize stat counters
+        #store the total number of bursts for use in averaging
+        self.totalBursts =  sum(b.numBursts for b in (b for b in self.processes)) 
         #burst time can be calculated by simply averaging the input burst times
-        self.avgBurstTime = sum((b.cpuBurstTime * b.numBursts for b in (b for b in self.processes))) / sum((b.numBursts for b in (b for b in self.processes)))
+        self.avgBurstTime = sum(b.cpuBurstTime * b.numBursts for b in (b for b in self.processes)) / self.totalBursts
+             
         self.avgWaitTime = 0
         self.avgTurnaroundTime = 0
         self.totalContextSwitches = 0
@@ -229,7 +232,7 @@ class Simulator():
         self.currRunning.state = State.Blocked
         
         #update turnaround time now that this process has finished a cpu burst, and include half of the context switch time to factor in the switch out
-        self.avgTurnaroundTime += (self.t - self.currRunning.lastArrivalTime + self.t_cs//2) / self.currRunning.totalBursts
+        self.avgTurnaroundTime += (self.t - self.currRunning.lastArrivalTime + self.t_cs//2)
         
         #finally, update the current running process to indicate that nothing is running
         self.currRunning = None
@@ -242,11 +245,6 @@ class Simulator():
         #once all bursts are finished, after switching out, the process should be destroyed
         if (event.process.numBursts == 0):
             self.processes.remove(event.process)
-            
-            #now that the process is finished with the cpu, average its wait time
-            event.process.avgWaitTime /= event.process.totalBursts
-            #add the process' final wait time to our overall average
-            self.avgWaitTime += event.process.avgWaitTime / self.n
             
         else:
             #if time remaining is 0, we should begin io and set time remaining to the new burst time
@@ -324,7 +322,7 @@ class Simulator():
             self.addEvent(EventType.SwitchIn, self.t + self.t_cs//2, self.currRunning) 
             
             #increment average wait time by how long this process was in the queue
-            self.currRunning.avgWaitTime += self.t - self.currRunning.lastArrivalTime
+            self.avgWaitTime += self.t - self.currRunning.lastArrivalTime
     
     """
     process the specified event, calling the corresponding helper method
@@ -373,7 +371,8 @@ class Simulator():
                 self.updateReadyQueue()
             
         #once we're done running, aggregate our average stats
-        self.avgTurnaroundTime /= self.n
+        self.avgWaitTime /= self.totalBursts
+        self.avgTurnaroundTime /= self.totalBursts
                 
         self.showStopMessage()
         
