@@ -108,9 +108,9 @@ class Simulator():
         fMode = 'a' if os.path.exists(fName) else 'w'
         with open(fName,fMode) as f:
             f.write("Algorithm {0}\n".format(self.algo.name))
-            f.write("-- average CPU burst time: {0}ms\n".format(round(self.avgBurstTime,2)))
-            f.write("-- average wait time: {0}ms\n".format(round(self.avgWaitTime,2)))
-            f.write("-- average turnaround time: {0}ms\n".format(round(self.avgTurnaroundTime,2)))
+            f.write("-- average CPU burst time: {0:.2f} ms\n".format(round(self.avgBurstTime,2)))
+            f.write("-- average wait time: {0:.2f} ms\n".format(round(self.avgWaitTime,2)))
+            f.write("-- average turnaround time: {0:.2f} ms\n".format(round(self.avgTurnaroundTime,2)))
             f.write("-- total number of context switches: {0}\n".format(self.totalContextSwitches))
             f.write("-- total number of preemptions: {0}\n".format(self.totalPreemptions))
         
