@@ -88,7 +88,7 @@ class Simulator():
             
         #initialize stat counters
         #burst time can be calculated by simply averaging the input burst times
-        self.avgBurstTime = sum((b.cpuBurstTime for b in (b for b in self.processes))) / self.n
+        self.avgBurstTime = sum((b.cpuBurstTime * b.numBursts for b in (b for b in self.processes))) / sum((b.numBursts for b in (b for b in self.processes)))
         self.avgWaitTime = 0
         self.avgTurnaroundTime = 0
         self.totalContextSwitches = 0
