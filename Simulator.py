@@ -259,7 +259,7 @@ class Simulator():
                 if (self.algo != Algorithm.RR):
                     self.ReadyQueue.put(event.process)
                     #as per the expected output the process should record time as though it was ready immediately, so subtract the switch-out time from lastArrivalTime
-                    event.process.lastArrivalTime = self.t - self.t_cs//2
+                    event.process.lastArrivalTime = self.t
         
     """
     when a process is finished with io blocking, add it back to the ready queue
