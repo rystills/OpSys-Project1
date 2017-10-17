@@ -206,7 +206,6 @@ class Simulator():
             self.currRunning.state = State.Blocked
             #add this process back to the ready queue right away as per the expected output
             self.ReadyQueue.put(self.currRunning)
-            event.process.lastArrivalTime = self.t
             
             #finally, update the current running process to indicate that nothing is running
             self.currRunning = None
@@ -258,8 +257,7 @@ class Simulator():
                 #expected output requires us to add processes back to the ready queue before switching out in RR, so no need to do it here
                 if (self.algo != Algorithm.RR):
                     self.ReadyQueue.put(event.process)
-                    #as per the expected output the process should record time as though it was ready immediately, so subtract the switch-out time from lastArrivalTime
-                    event.process.lastArrivalTime = self.t
+                event.process.lastArrivalTime = self.t
         
     """
     when a process is finished with io blocking, add it back to the ready queue
