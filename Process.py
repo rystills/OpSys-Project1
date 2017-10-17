@@ -36,7 +36,10 @@ class Process():
         
         #additional variables for stat tracking
         self.totalBursts = self.numBursts
+        #lastArrivalTime measures the last time this process entered the ReadyQueue
         self.lastArrivalTime = self.arrivalTime
+        #lastBurstArrivalTime measures the last time this process entered the ready queue after completing a full cpu burst
+        self.lastBurstArrivalTime = self.arrivalTime
                 
     """
     override the less-than operator for priority queue sorting based on cpu burst time, using PID as a tie breaker

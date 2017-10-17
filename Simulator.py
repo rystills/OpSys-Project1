@@ -183,6 +183,7 @@ class Simulator():
             self.preempt(event)
         else:
             self.ReadyQueue.put(p)
+            p.lastArrivalTime = self.t
             print("time {0}ms: Process {1} arrived and added to ready queue {2}".format(self.t, p.pid, self.queueString()))
             
     """
@@ -232,7 +233,7 @@ class Simulator():
         self.currRunning.state = State.Blocked
         
         #update turnaround time now that this process has finished a cpu burst, and include half of the context switch time to factor in the switch out
-        self.avgTurnaroundTime += (self.t - self.currRunning.lastArrivalTime + self.t_cs//2)
+        self.avgTurnaroundTime += (self.t - self.currRunning.lastBurstArrivalTime + self.t_cs//2)
         
         #finally, update the current running process to indicate that nothing is running
         self.currRunning = None
@@ -257,6 +258,7 @@ class Simulator():
                 #expected output requires us to add processes back to the ready queue before switching out in RR, so no need to do it here
                 if (self.algo != Algorithm.RR):
                     self.ReadyQueue.put(event.process)
+                    event.process.lastArrivalTime = self.t
         
     """
     when a process is finished with io blocking, add it back to the ready queue
@@ -265,9 +267,10 @@ class Simulator():
     def handleFinishBlocked(self, event):
         p = event.process
         p.state = State.Ready
-        #update lastArrivalTime each time a process returns to the ready queue on a fresh cpu burst, so we can calculate turnaround time correctly
+        p.lastArrivalTime = self.t
+        #update lastArrivalTime each time a process returns to the ready queue, and update lastBurstArrivalTime if this is a fresh cpu burst
         if (p.timeRemaining == p.cpuBurstTime):
-            p.lastArrivalTime = self.t
+            p.lastBurstArrivalTime = self.t
             
         if (self.algo == Algorithm.SRT and self.currRunning != None and p.timeRemaining < self.currRunningTimeRemaining()):
             print("time {0}ms: Process {1} completed I/O and will preempt {2} {3}".format(self.t, p.pid, self.currRunning.pid, self.queueString()))
