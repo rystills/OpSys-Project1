@@ -111,6 +111,7 @@ class Simulator():
         fMode = 'a' if os.path.exists(fName) else 'w'
         with open(fName,fMode) as f:
             f.write("Algorithm {0}\n".format(self.algo.name))
+            #round all numbers to 2 decimal places
             f.write("-- average CPU burst time: {0:.2f} ms\n".format(round(self.avgBurstTime,2)))
             f.write("-- average wait time: {0:.2f} ms\n".format(round(self.avgWaitTime,2)))
             f.write("-- average turnaround time: {0:.2f} ms\n".format(round(self.avgTurnaroundTime,2)))
@@ -128,7 +129,7 @@ class Simulator():
     show the stop message when this algorithm finishes
     """
     def showStopMessage(self):
-        #remove 'Algorithm.' from the algorithm name, and subtract 1 from time since we increment time 1 final time on completion
+        #remove 'Algorithm.' from the algorithm name
         print("time {0}ms: Simulator ended for {1}".format(self.t,self.algo.name),end='')
         
     """
